@@ -1,19 +1,32 @@
-import { Duration, Stack, StackProps } from 'aws-cdk-lib';
-import * as sns from 'aws-cdk-lib/aws-sns';
-import * as subs from 'aws-cdk-lib/aws-sns-subscriptions';
-import * as sqs from 'aws-cdk-lib/aws-sqs';
-import { Construct } from 'constructs';
+import { Duration, Stack, StackProps, RemovalPolicy } from "aws-cdk-lib";
+import * as s3 from "aws-cdk-lib/aws-s3";
+
+import { Construct } from "constructs";
+import { StateMachine } from "./construct/state-machine";
 
 export class AutopilotMlopsStack extends Stack {
   constructor(scope: Construct, id: string, props?: StackProps) {
     super(scope, id, props);
 
-    const queue = new sqs.Queue(this, 'AutopilotMlopsQueue', {
-      visibilityTimeout: Duration.seconds(300)
-    });
+    const resourceBucket = new s3.Bucket(
+      this,
+      "AutoML-TS-MLOps-Pipeline-Bucket",
+      {
+        bucketName: `automl-ts-mlops-pipeline-resource-bucket-${
+          Stack.of(this).account
+        }`,
+        versioned: false,
+        autoDeleteObjects: true,
+        removalPolicy: RemovalPolicy.DESTROY,
+      },
+    );
 
-    const topic = new sns.Topic(this, 'AutopilotMlopsTopic');
-
-    topic.addSubscription(new subs.SqsSubscription(queue));
+    const stateMachine = new StateMachine(
+      this,
+      "AutoML-TS-MLOps-Pipeline-StateMachine",
+      {
+        resourceBucket: resourceBucket,
+      },
+    );
   }
 }
